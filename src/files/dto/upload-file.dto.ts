@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class UploadFileDto {
   @IsString()
@@ -18,4 +24,11 @@ export class UploadFileDto {
 
   @IsString()
   path: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsString()
+  userId: string;
 }

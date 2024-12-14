@@ -1,25 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { File } from './schemas/file.schema';
 import { Model } from 'mongoose';
 import { UploadFileDto } from './dto/upload-file.dto';
+import * as fs from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class FilesService {
-  updateFileByName(filename: string, arg1: { name: string; path: string }) {
-    throw new Error('Method not implemented.');
-  }
   constructor(
     @InjectModel(File.name) private readonly fileModel: Model<File>,
   ) {}
 
-  async uploadFile(uploadFile: UploadFileDto) {
-    const file = new this.fileModel(uploadFile);
+  async updateFile(fileId: string, newName: string) {
+    const file = await this.getFileById(fileId);
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+    const oldPath = file.path;
+    const newPath = join(process.cwd(), 'uploads', newName);
+
+    fs.renameSync(oldPath, newPath);
+    file.name = newName;
+    file.path = newPath;
     return await file.save();
   }
 
-  async findFileByOriginalName(filename: string): Promise<File | null> {
-    return this.fileModel.findOne({ name: filename }).exec();
+  async uploadFile(fileData: Partial<File>, userId: string): Promise<File> {
+    const file = new this.fileModel({
+      ...fileData,
+      owner: userId,
+    });
+    return file.save();
   }
 
   async getFiles(folderId?: string): Promise<File[]> {
@@ -31,7 +43,16 @@ export class FilesService {
     return this.fileModel.findById(fileId).exec();
   }
 
+  async getUserFiles(userId: string): Promise<File[]> {
+    return this.fileModel.find({ owner: userId }).exec();
+  }
+
   async deleteFile(fileId: string): Promise<void> {
-    this.fileModel.findByIdAndDelete(fileId).exec();
+    const file = await this.getFileById(fileId);
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+    fs.unlinkSync(file.path);
+    await this.fileModel.findByIdAndDelete(fileId).exec();
   }
 }

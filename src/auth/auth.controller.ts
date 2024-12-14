@@ -19,4 +19,11 @@ export class AuthController {
     const jwt = this.authService.generateJwt(user);
     res.json({ token: jwt, user });
   }
+
+  @Post('refresh-token')
+  async refreshToken(@Body('token') token: string, @Res() res): Promise<void> {
+    const user = await this.authService.validateJwt(token);
+    const jwt = this.authService.generateJwt(user);
+    res.json({ data: { token: jwt, user } });
+  }
 }
