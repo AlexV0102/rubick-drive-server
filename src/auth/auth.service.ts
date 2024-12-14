@@ -1,9 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+  async validateJwt(token: string) {
+    try {
+      const decoded = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET,
+      });
+
+      return {
+        id: decoded.id,
+        email: decoded.email,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid token');
+    }
+  }
   private googleClient = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -12,7 +26,6 @@ export class AuthService {
   constructor(private readonly jwtService: JwtService) {}
 
   async validateGoogleToken(token: string): Promise<any> {
-    console.log('token', token);
     const ticket = await this.googleClient.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
