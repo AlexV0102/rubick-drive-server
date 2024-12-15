@@ -4,28 +4,33 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class File extends Document {
   @Prop({ required: true })
-  name: string; // File name
+  name: string;
 
   @Prop({ required: true })
-  fileType: string; // MIME type
+  fileType: string;
 
   @Prop({ required: true })
-  size: number; // File size in bytes
+  size: number;
 
   @Prop({ type: String, required: false, default: null })
   folderId?: string;
 
   @Prop({ required: true })
-  path: string; // Path to file in the filesystem
+  path: string;
 
   @Prop({ default: false })
-  isPublic: boolean; // Public or private file
+  isPublic: boolean;
 
   @Prop({
-    type: [{ userId: { type: String, ref: 'User' }, permission: String }],
+    type: [
+      {
+        email: { type: String },
+        role: { type: String, enum: ['viewer', 'editor'] },
+      },
+    ],
     default: [],
   })
-  sharedWith: Array<{ userId: string; permission: 'viewer' | 'editor' }>;
+  sharedWith: Array<{ email: string; role: 'viewer' | 'editor' }>;
 
   @Prop({ type: String, ref: 'User', required: true })
   owner: string;

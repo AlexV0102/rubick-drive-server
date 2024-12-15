@@ -4,6 +4,13 @@ import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
+  private googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+  );
+
+  constructor(private readonly jwtService: JwtService) {}
+
   async validateJwt(token: string) {
     try {
       const decoded = this.jwtService.verify(token, {
@@ -18,12 +25,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token');
     }
   }
-  private googleClient = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-  );
-
-  constructor(private readonly jwtService: JwtService) {}
 
   async validateGoogleToken(token: string): Promise<any> {
     const ticket = await this.googleClient.verifyIdToken({
@@ -32,7 +33,7 @@ export class AuthService {
     });
 
     const payload = ticket.getPayload();
-    if (!payload) throw new Error('Invalid Google token');
+    if (!payload) throw new UnauthorizedException('Invalid Google token');
 
     return {
       id: payload.sub,
@@ -44,7 +45,14 @@ export class AuthService {
   generateJwt(user: any): string {
     return this.jwtService.sign(
       { id: user.id, email: user.email },
-      { secret: process.env.JWT_SECRET },
+      { secret: process.env.JWT_SECRET, expiresIn: '1h' },
+    );
+  }
+
+  generateRefreshToken(user: any): string {
+    return this.jwtService.sign(
+      { id: user.id },
+      { secret: process.env.JWT_SECRET, expiresIn: '7d' },
     );
   }
 }
