@@ -21,8 +21,7 @@ export class FilesService {
       throw new NotFoundException('File not found');
     }
     const oldPath = file.path;
-    console.log('oldPath', oldPath);
-    console.log('newName', newName);
+
     const newPath = join('uploads', newName);
 
     fs.renameSync(oldPath, newPath);
@@ -74,21 +73,13 @@ export class FilesService {
     return await file.save();
   }
 
-  async getFiles(folderId?: string): Promise<File[]> {
+  async getFiles(userId, folderId?: string): Promise<File[]> {
     const query = folderId ? { folderId } : {};
-    return this.fileModel.find(query).exec();
+    return this.fileModel.find({ owner: userId, ...query }).exec();
   }
 
-  async getFile(fileId: string, email?: string) {
+  async getFile(fileId: string) {
     const file = await this.fileModel.findById(fileId);
-    if (!file) throw new NotFoundException('File not found');
-
-    if (file.isPublic) return file;
-    const hasAccess =
-      file.owner === email ||
-      file.sharedWith.some((perm) => perm.email === email);
-    if (!hasAccess) throw new ForbiddenException('Access denied');
-
     return file;
   }
 
@@ -97,7 +88,7 @@ export class FilesService {
   }
 
   async deleteFile(fileId: string, userId: string): Promise<void> {
-    const file = await this.getFile(fileId, userId);
+    const file = await this.getFile(fileId);
     if (!file) {
       throw new NotFoundException('File not found');
     }
@@ -111,5 +102,30 @@ export class FilesService {
 
   async getFileById(fileId: string): Promise<File | null> {
     return this.fileModel.findById(fileId).exec();
+  }
+
+  async changeFileVisibility(
+    fileId: string,
+    userId: string,
+    isPublic: boolean,
+  ) {
+    const file = await this.fileModel.findById(fileId);
+
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+    if (file.owner !== userId) {
+      throw new ForbiddenException(
+        'You do not have permission to change this file visibility',
+      );
+    }
+
+    file.isPublic = isPublic;
+    await file.save();
+
+    return {
+      message: `File visibility changed to ${isPublic ? 'Public' : 'Private'}`,
+      file,
+    };
   }
 }

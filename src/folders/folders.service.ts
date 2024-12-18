@@ -1,21 +1,25 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Folder } from './schemas/folder-schema';
 import { Model } from 'mongoose';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { File } from 'src/files/schemas/file.schema';
+import { join } from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class FoldersService {
   constructor(
     @InjectModel(Folder.name) private readonly folderModel: Model<Folder>,
-    @InjectModel(File.name) private readonly fileModel: Model<File>, // Inject File model
+    @InjectModel(File.name) private readonly fileModel: Model<File>,
   ) {}
 
   addSubFolderToFolder(folderId: string, createFolderDto: CreateFolderDto) {
-    console.log('folderId', folderId);
-    console.log('createFolderDto', createFolderDto);
     const folder = new this.folderModel({
       ...createFolderDto,
     });
@@ -23,7 +27,6 @@ export class FoldersService {
       { _id: folderId },
       { $push: { subFolders: folder } },
     );
-    console.log('result', result);
     return result;
   }
   async addFileToFolder(
@@ -35,8 +38,7 @@ export class FoldersService {
       ...fileData,
       owner: userId,
     });
-    const savedFile = await file.save();
-    console.log('data', fileData);
+    // const savedFile = await file.save();
 
     const folder = await this.folderModel.findOneAndUpdate(
       { _id: folderId, owner: userId },
@@ -63,7 +65,8 @@ export class FoldersService {
   }
 
   async getFolderById(folderId: string) {
-    return this.folderModel.findById({ _id: folderId }).exec();
+    const folder = await this.folderModel.findById({ _id: folderId }).exec();
+    return folder;
   }
 
   async updateFolder(
@@ -78,7 +81,68 @@ export class FoldersService {
   }
 
   async deleteFolder(folderId: string): Promise<void> {
-    const folder = await this.folderModel.findByIdAndDelete(folderId).exec();
+    const folder = await this.folderModel.findById(folderId).exec();
     if (!folder) throw new NotFoundException('Folder not found');
+
+    const files = await this.fileModel.find({ folderId: folderId }).exec();
+    for (const file of files) {
+      const filePath = join(process.cwd(), file.path);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      await this.fileModel.findByIdAndDelete(file._id).exec();
+    }
+    const subfolders = await this.folderModel
+      .find({ parentFolderId: folderId })
+      .exec();
+    for (const subfolder of subfolders) {
+      await this.deleteFolder(subfolder._id as string);
+    }
+    await this.folderModel.findByIdAndDelete(folderId).exec();
+  }
+  async changeFolderVisibility(
+    folderId: string,
+    userId: string,
+    isPublic: boolean,
+  ) {
+    const folder = await this.folderModel.findById(folderId);
+    if (!folder) throw new NotFoundException('Folder not found');
+
+    if (folder.owner !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to change folder visibility',
+      );
+    }
+
+    folder.isPublic = isPublic;
+    await folder.save();
+
+    return {
+      message: `Folder visibility updated to ${isPublic ? 'Public' : 'Private'}`,
+      folder,
+    };
+  }
+
+  async updateFolderPermissions(
+    folderId: string,
+    userId: string,
+    permissions: { email: string; role: 'viewer' | 'editor' }[],
+  ) {
+    const folder = await this.folderModel.findById(folderId);
+    if (!folder) throw new NotFoundException('Folder not found');
+
+    if (folder.owner !== userId) {
+      throw new ForbiddenException(
+        'You are not authorized to update folder permissions',
+      );
+    }
+
+    folder.sharedWith = permissions;
+    await folder.save();
+
+    return {
+      message: 'Folder permissions updated',
+      folder,
+    };
   }
 }

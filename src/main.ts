@@ -11,10 +11,10 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('Cats example')
-    .setDescription('The cats API description')
+    .setTitle('Rubick drive')
+    .setDescription('API description for Rubick drive')
     .setVersion('1.0')
-    .addTag('cats')
+    .addTag('drive')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);

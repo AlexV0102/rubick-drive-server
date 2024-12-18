@@ -17,6 +17,20 @@ export class Folder extends Document {
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Folder' }], default: [] })
   subFolders: Types.ObjectId[];
+
+  @Prop({ default: false })
+  isPublic: boolean;
+
+  @Prop({
+    type: [
+      {
+        email: { type: String, required: true },
+        role: { type: String, enum: ['viewer', 'editor'], required: true },
+      },
+    ],
+    default: [],
+  })
+  sharedWith: Array<{ email: string; role: 'viewer' | 'editor' }>;
 }
 
 export const FolderSchema = SchemaFactory.createForClass(Folder);

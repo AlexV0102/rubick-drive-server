@@ -11,7 +11,6 @@ export class File extends Document {
 
   @Prop({ required: true })
   size: number;
-
   @Prop({ type: String, required: false, default: null })
   folderId?: string;
 
@@ -32,7 +31,7 @@ export class File extends Document {
   })
   sharedWith: Array<{ email: string; role: 'viewer' | 'editor' }>;
 
-  @Prop({ type: String, ref: 'User', required: true })
+  @Prop({ type: String, required: true, ref: 'User' })
   owner: string;
 }
 

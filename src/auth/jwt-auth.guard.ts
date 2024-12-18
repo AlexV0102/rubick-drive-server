@@ -23,7 +23,6 @@ export class JwtAuthGuard implements CanActivate {
         secret: process.env.JWT_SECRET,
       });
       request.user = decoded;
-      console.log('Decoded Token:', decoded);
       return true;
     } catch (error) {
       console.error('Invalid token:', error.message);
