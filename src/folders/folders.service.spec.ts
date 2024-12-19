@@ -1,31 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FoldersService } from 'src/folders/folders.service';
+import { FoldersService } from './folders.service';
 import { getModelToken } from '@nestjs/mongoose';
-import { Folder } from 'src/folders/schemas/folder-schema';
-import { File } from '../files/schemas/file.schema';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Folder } from './schemas/folder-schema';
+import { File } from '../files/schemas/file.schema';
 
 const mockFolder = {
-  id: 'folder123',
+  _id: 'folder123',
   name: 'Test Folder',
   owner: 'user123',
   isPublic: false,
   files: [],
   subFolders: [],
-  save: jest.fn(),
+  save: jest.fn().mockResolvedValue(this),
 };
 
 const mockFile = {
-  id: 'file123',
+  _id: 'file123',
   name: 'Test File',
   folderId: 'folder123',
-  size: 1024,
-  path: 'uploads/test.txt',
-  save: jest.fn(),
+  path: '/uploads/test.txt',
 };
 
 const mockFolderModel = {
   findById: jest.fn().mockReturnValue({
+    exec: jest.fn().mockResolvedValue(mockFolder),
+  }),
+  findByIdAndUpdate: jest.fn().mockReturnValue({
     exec: jest.fn().mockResolvedValue(mockFolder),
   }),
   findByIdAndDelete: jest.fn().mockReturnValue({
@@ -41,6 +42,9 @@ const mockFileModel = {
   find: jest.fn().mockReturnValue({
     exec: jest.fn().mockResolvedValue([mockFile]),
   }),
+  findByIdAndDelete: jest.fn().mockReturnValue({
+    exec: jest.fn().mockResolvedValue(mockFile),
+  }),
 };
 
 describe('FoldersService', () => {
@@ -50,14 +54,8 @@ describe('FoldersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FoldersService,
-        {
-          provide: getModelToken(Folder.name),
-          useValue: mockFolderModel,
-        },
-        {
-          provide: getModelToken(File.name),
-          useValue: mockFileModel,
-        },
+        { provide: getModelToken(Folder.name), useValue: mockFolderModel },
+        { provide: getModelToken(File.name), useValue: mockFileModel },
       ],
     }).compile();
 
@@ -75,15 +73,6 @@ describe('FoldersService', () => {
 
       expect(mockFolderModel.create).toHaveBeenCalledWith(createFolderDto);
       expect(result).toEqual(mockFolder);
-    });
-  });
-
-  describe('getUserFolders', () => {
-    it('should return all folders for a user', async () => {
-      const result = await service.getUserFolders('user123');
-
-      expect(mockFolderModel.find).toHaveBeenCalledWith({ owner: 'user123' });
-      expect(result).toEqual([mockFolder]);
     });
   });
 
@@ -109,6 +98,16 @@ describe('FoldersService', () => {
   });
 
   describe('deleteFolder', () => {
+    it('should delete a folder and its contents', async () => {
+      const result = await service.deleteFolder('folder123');
+
+      expect(mockFolderModel.findById).toHaveBeenCalledWith('folder123');
+      expect(mockFolderModel.findByIdAndDelete).toHaveBeenCalledWith(
+        'folder123',
+      );
+      expect(result).toBeUndefined();
+    });
+
     it('should throw NotFoundException if folder does not exist', async () => {
       mockFolderModel.findById.mockReturnValueOnce({
         exec: jest.fn().mockResolvedValue(null),

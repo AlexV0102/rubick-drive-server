@@ -4,7 +4,6 @@ import { AuthModule } from './auth/auth.module';
 import { FilesModule } from './files/files.module';
 import { FoldersModule } from './folders/folders.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { UserModule } from './user/user.module';
 import { SearchModule } from './search/search.module';
 
 @Module({
@@ -16,7 +15,6 @@ import { SearchModule } from './search/search.module';
     AuthModule,
     FilesModule,
     FoldersModule,
-    UserModule,
     SearchModule,
   ],
 })

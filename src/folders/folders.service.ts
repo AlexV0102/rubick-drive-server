@@ -38,7 +38,6 @@ export class FoldersService {
       ...fileData,
       owner: userId,
     });
-    // const savedFile = await file.save();
 
     const folder = await this.folderModel.findOneAndUpdate(
       { _id: folderId, owner: userId },
@@ -54,10 +53,10 @@ export class FoldersService {
   }
 
   async createFolder(createFolderDto: CreateFolderDto): Promise<Folder> {
-    const folder = new this.folderModel({
+    const folder = this.folderModel.create({
       ...createFolderDto,
     });
-    return folder.save();
+    return folder;
   }
 
   async getUserFolders(userId: string): Promise<Folder[]> {
@@ -66,6 +65,7 @@ export class FoldersService {
 
   async getFolderById(folderId: string) {
     const folder = await this.folderModel.findById({ _id: folderId }).exec();
+    if (!folder) throw new NotFoundException('Not found folder');
     return folder;
   }
 
@@ -96,8 +96,9 @@ export class FoldersService {
       .find({ parentFolderId: folderId })
       .exec();
     for (const subfolder of subfolders) {
-      await this.deleteFolder(subfolder._id as string);
+      await this.folderModel.findByIdAndDelete(subfolder._id).exec();
     }
+
     await this.folderModel.findByIdAndDelete(folderId).exec();
   }
   async changeFolderVisibility(
@@ -106,6 +107,7 @@ export class FoldersService {
     isPublic: boolean,
   ) {
     const folder = await this.folderModel.findById(folderId);
+
     if (!folder) throw new NotFoundException('Folder not found');
 
     if (folder.owner !== userId) {

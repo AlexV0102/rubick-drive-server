@@ -53,11 +53,11 @@ export class FilesService {
   }
 
   async uploadFile(fileData: Partial<File>, userId: string): Promise<File> {
-    const file = new this.fileModel({
+    const file = await this.fileModel.create({
       ...fileData,
       owner: userId,
     });
-    return file.save();
+    return file;
   }
 
   async updateFilePermissions(
